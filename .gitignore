@@ -1,6 +1,7 @@
 # Prerequisites
 *.d
-
+#the mighty executable
+httpd
 # Object files
 *.o
 *.ko

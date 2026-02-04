@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
     while (1) {
         int c = server_accept(s);
         if (!fork()) {
-            close(s);
+            // close(s);
             handle_client(s, c);
             close(c);
             exit(0);

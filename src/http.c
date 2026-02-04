@@ -11,20 +11,34 @@
 
 httpreq *parse_http(char *str) {
     httpreq *req = malloc(sizeof(httpreq));
+    if (!req) return NULL;
+    
     char *p = str;
-
+    
+    // Extract method (e.g., "GET")
     while (*p && *p != ' ') p++;
-    if (!*p) return NULL;
+    if (!*p) {
+        free(req);
+        return NULL;
+    }
     *p = 0;
-
     strncpy(req->method, str, sizeof(req->method) - 1);
-
-    str = ++p;
+    req->method[sizeof(req->method) - 1] = '\0';  // Ensure null termination
+    
+    // Move to start of URL
+    p++;  // Skip the space we just nulled
+    str = p;  // ← This is the key fix - update str to point to URL start
+    
+    // Extract URL (e.g., "/users/9")
     while (*p && *p != ' ') p++;
-    if (!*p) return NULL;
+    if (!*p) {
+        free(req);
+        return NULL;
+    }
     *p = 0;
-
     strncpy(req->url, str, sizeof(req->url) - 1);
+    req->url[sizeof(req->url) - 1] = '\0';  // Ensure null termination
+    
     return req;
 }
 

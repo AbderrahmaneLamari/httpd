@@ -39,5 +39,6 @@ void handle_client(int s, int c) {
     if (!req) return;
 
     dispatch_route(c, req);
+    // free(raw);
     free(req);
 }

@@ -3,25 +3,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../include/clog.h"
 
 #define STATIC_ROOT "./www"
 
 // ------------------ Handlers ------------------
 
-static void user_handler(int c, route_params *p) {
+static void user_handler(int c, route_params *p, http_request* req) {
   char body[128];
-  snprintf(body, sizeof(body), "User ID = %s\n", p->params[0].value);
+  snprintf(body, sizeof(body), "User ID = %s, version: %s\n", p->params[0].value, req->version);
   http_response(c, 200, "text/plain", body);
 }
 
-static void post_comment_handler(int c, route_params *p) {
+static void post_comment_handler(int c, route_params *p, http_request* req) {
   char body[256];
   snprintf(body, sizeof(body), "Post %s, Comment %s\n", p->params[0].value,
            p->params[1].value);
   http_response(c, 200, "text/plain", body);
 }
 
-static void not_found(int c, route_params *p) {
+static void not_found(int c, route_params *p, http_request* req) {
   http_response(c, 404, "text/plain", "404 Not Found");
 }
 
@@ -43,14 +44,9 @@ static void static_handler(int c, const char *url) {
 
 // ------------------ Route Matching ------------------
 
-struct route {
-  const char *method;
-  const char *pattern; // e.g. "/users/:id"
-  route_handler handler;
-};
 
-static int match_route(const char *pattern, const char *path,
-                      route_params *out) {
+
+static int match_route(const char *pattern, const char *path, route_params *out) {
     char pcopy[256], ucopy[256];
     char *ptok, *utok;
     char *psave, *usave;
@@ -59,13 +55,12 @@ static int match_route(const char *pattern, const char *path,
     snprintf(pcopy, sizeof(pcopy), "%s", pattern);
     snprintf(ucopy, sizeof(ucopy), "%s", path);
 
-    printf("DEBUG: Matching pattern='%s' against path='%s'\n", pattern, path);
-
+    DEBUG("Matching pattern='%s' against path='%s'", pattern, path);
     ptok = strtok_r(pcopy, "/", &psave);
     utok = strtok_r(ucopy, "/", &usave);
 
     while (ptok && utok) {
-        printf("DEBUG: Comparing ptok='%s' with utok='%s'\n", ptok, utok);
+        TRACE("Comparing ptok='%s' with utok='%s'", ptok, utok);
         
         if (ptok[0] == ':') {
             snprintf(out->params[out->count].key, sizeof(out->params[0].key),
@@ -74,7 +69,7 @@ static int match_route(const char *pattern, const char *path,
                     "%s", utok);
             out->count++;
         } else if (strcmp(ptok, utok) != 0) {
-            printf("DEBUG: Mismatch! Returning 0\n");
+            // printf("DEBUG: Mismatch! Returning 0\n");
             return 0;
         }
         ptok = strtok_r(NULL, "/", &psave);
@@ -82,7 +77,7 @@ static int match_route(const char *pattern, const char *path,
     }
 
     int result = (ptok == NULL && utok == NULL);
-    printf("DEBUG: Final result=%d (ptok=%p, utok=%p)\n", result, ptok, utok);
+    TRACE("Final result=%d (ptok=%p, utok=%p)", result, ptok, utok);
     return result;
 }
 
@@ -97,7 +92,7 @@ static struct route routes[] = {
 
 // ------------------ Dispatcher ------------------
 
-void dispatch_route(int c, httpreq *req) {
+void dispatch_route(int c, http_request *req) {
   route_params params;
 
   // Remove trailing slash if present
@@ -106,24 +101,24 @@ void dispatch_route(int c, httpreq *req) {
     ((char *)req->url)[len - 1] = 0;
   }
 
-  // 1️⃣ Static files
+  // Static files
   if (strcmp(req->method, "GET") == 0 &&
       strncmp(req->url, "/static/", 8) == 0) {
     static_handler(c, req->url);
     return;
   }
 
-  // 2️⃣ Parameterized routes
+  // Parameterized routes
   for (int i = 0; i < ROUTE_COUNT; i++) {
     if (strcmp(req->method, routes[i].method) != 0)
       continue;
 
     if (match_route(routes[i].pattern, req->url, &params)) {
-      routes[i].handler(c, &params);
+      routes[i].handler(c, &params, req);
       return;
     }
   }
 
-  // 3️⃣ Not found
-  not_found(c, NULL);
+  // Not found
+  not_found(c, NULL, req);
 }

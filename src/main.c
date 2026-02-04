@@ -2,12 +2,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "../include/server.h"
+#include "../include/clog.h"
 
 int main(int argc, char **argv) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <port>\n", argv[0]);
         return 1;
     }
+    clog_set_level(CLOG_INFO);
 
     int s = server_init(atoi(argv[1]));
     printf("Listening on port %s\n", argv[1]);

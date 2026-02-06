@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -Iinclude
 
-SRC=./main.c src/server.c src/http.c src/routes.c src/clog.c src/cframework.c
+SRC=./main.c src/*.c
 OUT=httpd
 
 all:

@@ -146,8 +146,9 @@ static void parse_query(char *path, http_request *req) {
 
 // ---------------- Main Parser ----------------
 
+// Todo: read request using the new http_parser that i stole from the other boy.
 int http_read_request(int c, http_request *req) {
-    char buffer[4096];
+    char buffer[MAX_HEADERS];
     int n = read(c, buffer, sizeof(buffer) - 1);
 
     if (n <= 0)
@@ -183,11 +184,21 @@ int http_read_request(int c, http_request *req) {
     // ---- Body ----
     const char *cl = http_get_header(req, "Content-Length");
     if (cl) {
+
         int len = atoi(cl);
+
         if (len > 0 && len < (int)sizeof(req->body)) {
             memcpy(req->body, strtok(NULL, ""), len);
             req->body[len] = 0;
             req->body_length = len;
+        }
+    }
+    const char *ka = http_get_header(req, "Connection");
+    if (ka) {
+
+        int keepalive = strcmp(ka, "keep-alive");
+        if(keepalive == 0){
+            req->keep_alive;
         }
     }
 
@@ -197,7 +208,9 @@ int http_read_request(int c, http_request *req) {
 // ---------------- Helpers ----------------
 
 const char *http_get_header(http_request *req, const char *key) {
+
     for (int i = 0; i < req->header_count; i++) {
+
         if (strcasecmp(req->headers[i].key, key) == 0)
             return req->headers[i].value;
     }

@@ -9,18 +9,7 @@
 
 // ------------------ Handlers ------------------
 
-static void user_handler(int c, route_params *p, http_request* req) {
-  char body[128];
-  snprintf(body, sizeof(body), "User ID = %s, version: %s\n", p->params[0].value, req->version);
-  http_response(c, 200, "text/plain", body);
-}
 
-static void post_comment_handler(int c, route_params *p, http_request* req) {
-  char body[256];
-  snprintf(body, sizeof(body), "Post %s, Comment %s\n", p->params[0].value,
-           p->params[1].value);
-  http_response(c, 200, "text/plain", body);
-}
 
 static void not_found(int c, route_params *p, http_request* req) {
   http_response(c, 404, "text/plain", "404 Not Found");

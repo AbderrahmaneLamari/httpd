@@ -18,7 +18,7 @@ int main() {
   struct route routes[] = {{"GET", "/users/:id", my_handler},{"GET", "/boy/:ff", other_handler}};
 
 
-  start_server(3010, routes, sizeof(routes)/sizeof(routes[0]));
+  start_server(3000, routes, sizeof(routes)/sizeof(routes[0]));
 
 
   return 0;

@@ -4,6 +4,7 @@
 #include "http.h"
 
 #define MAX_PARAMS 8
+#define MAX_ROUTE_COUNT 48
 
 typedef struct {
   char key[32];
@@ -15,7 +16,7 @@ typedef struct {
   int count;
 } route_params;
 
-typedef void (*route_handler)(int client_fd, route_params *params, http_request *req);
+typedef void (*route_handler)(http_request *req, http_response *res);
 
 struct route {
   const char *method;

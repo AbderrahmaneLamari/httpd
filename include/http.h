@@ -6,7 +6,7 @@
 #define MAX_QUERY_PARAMS  0x10 // 16
 #define MAX_BUFFER_SIZE 0x1000 // 4096
 #define MAX_BODY_SIZE 0x400 // 1024
-
+#define HTTP_MAX_HEADERS 0x20 // 32
 typedef struct {
     char method[8];
     char url[128];
@@ -110,28 +110,28 @@ typedef enum {
 
 } http_status_t;
 
-// typedef struct {
-//     int client_fd;
-//     int status;
+typedef struct {
+    int client_fd;
+    int status;
 
-//     char headers[MAX_HEADERS][2][128];
-//     int header_count;
+    http_pair headers[MAX_HEADERS];
+    int header_count;
 
-//     int headers_sent;
-// } http_response;
+    int headers_sent;
+} http_response;
 
-void http_response(
-    int client_fd,
-    int status,
-    const char *content_type,
-    const char *body
-);
+// void http_response(
+//     int client_fd,
+//     int status,
+//     const char *content_type,
+//     const char *body
+// );
 
-// void http_res_init(http_response *res, int client_fd);
-// void http_res_set_header(http_response *res, const char *key, const char *value);
-// void http_res_send(http_response *res, int status, const char *content_type, const char *body);
+void http_res_init(http_response *res, int client_fd);
+void http_res_set_header(http_response *res, const char *key, const char *value);
+void http_res_send(http_response *res, int status, const char *content_type, const char *body);
 
-void http_send_file(int client_fd, const char *path);
+void http_send_file(http_request *req, http_response *res);
 
 const char *mime_type(const char *path);
 

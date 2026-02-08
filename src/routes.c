@@ -11,24 +11,25 @@
 
 
 
-static void not_found(int c, route_params *p, http_request* req) {
-  http_response(c, 404, "text/plain", "404 Not Found");
+static void not_found(http_request *req,  http_response* res) {
+  DEBUG("Accessing '%s'. Route not found, returned HTTP_NOT_FOUND: 404", req->url);
+  http_res_send(res, 404, "text/plain", "Error 404: Was Not Found, ma boy..");
 }
 
 // ------------------ Static File ------------------
 
-static void static_handler(int c, const char *url) {
+static void static_handler(http_request *req, http_response *res) {
   char path[512];
 
   // Prevent directory traversal
-  if (strstr(url, "..")) {
-    http_response(c, 403, "text/plain", "403 Forbidden");
+  if (strstr(req->url, "..")) {
+    http_res_send(res, 403, "text/plain", "Forbidden");
     return;
   }
 
   // remove /static prefix
-  snprintf(path, sizeof(path), "%s%s", STATIC_ROOT, url + 7);
-  http_send_file(c, path);
+  snprintf(path, sizeof(path), "%s%s", STATIC_ROOT, req->url + 7);
+  http_send_file(req, res);
 }
 
 // ------------------ Route Matching ------------------
@@ -81,32 +82,39 @@ static int match_route(const char *pattern, const char *path, route_params *out)
 // ------------------ Dispatcher ------------------
 
 void dispatch_route(int c, http_request *req, struct route routes[], int n) {
+    DEBUG("dispatch_route: url='%s', method='%s'", req->url, req->method);  // ADD THIS
   route_params params;
+
+  http_response res;
+  http_res_init(&res, c);
 
   // Remove trailing slash if present
   size_t len = strlen(req->url);
   if (len > 1 && req->url[len - 1] == '/') {
-    ((char *)req->url)[len - 1] = 0;
+    (req->url)[len - 1] = 0;
   }
 
   // Static files
   if (strcmp(req->method, "GET") == 0 &&
       strncmp(req->url, "/static/", 8) == 0) {
-    static_handler(c, req->url);
+    static_handler(req, &res);
     return;
   }
 
   // Parameterized routes
   for (int i = 0; i < n; i++) {
+     TRACE("Checking route %d: method='%s', pattern='%s'", i, routes[i].method, routes[i].pattern);  // ADD THIS
     if (strcmp(req->method, routes[i].method) != 0)
       continue;
 
     if (match_route(routes[i].pattern, req->url, &params)) {
-      routes[i].handler(c, &params, req);
+      DEBUG("Route matched! Calling handler");  // ADD THIS
+      routes[i].handler(req, &res);
       return;
     }
   }
 
   // Not found
-  not_found(c, NULL, req);
+  DEBUG("No route matched, calling not_found");  // ADD THIS
+  not_found(req, &res);
 }

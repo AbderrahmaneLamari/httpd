@@ -13,7 +13,15 @@
 int start_server(server_t *srv) {
 
   clog_set_level(CLOG_TRACE);
+  clog_set_color_mode(CLOG_COLOR_ALWAYS);
 
+  // Initialize session store
+  srv->session_store = session_store_init();
+  if (!srv->session_store) {
+    ERROR("Failed to initialize session store");
+    return -1;
+  }
+  
   int listen_fd = server_init(srv->port);
   set_nonblocking(listen_fd);
 
@@ -151,4 +159,61 @@ void cfk_add_delete(server_t *srv, char *path, route_handler handler) {
         srv->routes[srv->route_count].pattern,
         srv->routes[srv->route_count].method);
   srv->routes[srv->route_count++] = rt;
+}
+static void add_route(server_t *srv, const char *method, const char *path,
+                      route_handler handler, 
+                      middleware_fn *middlewares, int middleware_count) {
+  if (srv->route_count >= MAX_ROUTE_COUNT) {
+    WARN("route_count exceeded MAX_ROUTE_COUNT");
+    return;
+  }
+
+  struct route rt = {
+    .handler = handler,
+    .method = method,
+    .pattern = path,
+    .middleware_count = middleware_count
+  };
+
+  // Copy middlewares
+  for (int i = 0; i < middleware_count && i < MAX_MIDDLEWARES; i++) {
+    rt.middlewares[i] = middlewares[i];
+  }
+
+  srv->routes[srv->route_count] = rt;
+  srv->route_count++;
+
+  DEBUG("Added route: %s %s with %d middlewares", method, path, middleware_count);
+}
+
+// Convenience functions for different HTTP methods with middleware
+void cfk_add_get_protected(server_t *srv, char *path, route_handler handler,
+                           middleware_fn *middlewares, int count) {
+  middleware_fn mw[MAX_MIDDLEWARES];
+  mw[0] = require_login;  // Default: require login
+  int total = 1;
+  
+  for (int i = 0; i < count && total < MAX_MIDDLEWARES; i++) {
+    mw[total++] = middlewares[i];
+  }
+  
+  add_route(srv, "GET", path, handler, mw, total);
+}
+
+void cfk_add_post_protected(server_t *srv, char *path, route_handler handler,
+                            middleware_fn *middlewares, int count) {
+  middleware_fn mw[MAX_MIDDLEWARES];
+  mw[0] = require_login;
+  int total = 1;
+  
+  for (int i = 0; i < count && total < MAX_MIDDLEWARES; i++) {
+    mw[total++] = middlewares[i];
+  }
+  
+  add_route(srv, "POST", path, handler, mw, total);
+}
+
+void cfk_add_get_admin(server_t *srv, char *path, route_handler handler) {
+  middleware_fn mw[] = { require_admin };
+  add_route(srv, "GET", path, handler, mw, 1);
 }

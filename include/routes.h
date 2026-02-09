@@ -2,6 +2,7 @@
 #define ROUTES_H
 
 #include "http.h"
+#include "middleware.h"
 
 #define MAX_PARAMS 8
 #define MAX_ROUTE_COUNT 48
@@ -22,6 +23,8 @@ struct route {
   const char *method;
   const char *pattern; // e.g. "/users/:id"
   route_handler handler;
+  middleware_fn middlewares[MAX_MIDDLEWARES];  // Add this
+  int middleware_count;  
 };
 
 void dispatch_route(int client_fd, http_request *req, struct route routes[], int n);

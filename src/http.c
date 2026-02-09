@@ -269,9 +269,9 @@ int http_read_request(int c, http_request *req) {
   }
 
   buffer[n] = 0;
-  
+
   DEBUG("Raw buffer: [%s]", buffer);
-  
+
   memset(req, 0, sizeof(*req));
 
   char *line = strtok(buffer, "\n");
@@ -284,11 +284,12 @@ int http_read_request(int c, http_request *req) {
 
   // ---- Request line ----
   // IMPORTANT: Use the req struct's buffers, not pointers into buffer!
-  int parsed = sscanf(line, "%7s %255s %15s", req->method, req->url, req->version);
-  
-  DEBUG("Parsed %d fields: method='%s', url='%s', version='%s'", 
-        parsed, req->method, req->url, req->version);
-  
+  int parsed =
+      sscanf(line, "%7s %255s %15s", req->method, req->url, req->version);
+
+  DEBUG("Parsed %d fields: method='%s', url='%s', version='%s'", parsed,
+        req->method, req->url, req->version);
+
   if (parsed < 2) {
     DEBUG("Parse failed, only got %d fields", parsed);
     return -1;
@@ -323,10 +324,34 @@ int http_read_request(int c, http_request *req) {
       }
     }
   }
-  
+
   const char *ka = http_get_header(req, "Connection");
   if (ka && strcmp(ka, "keep-alive") == 0) {
     req->keep_alive = 1;
+  }
+
+  // In http_read_request(), after parsing headers:
+
+  // Extract session ID from Cookie header
+  const char *cookie_header = http_get_header(req, "Cookie");
+  if (cookie_header) {
+    const char *session_marker = "sessionid=";
+    const char *session_start = strstr(cookie_header, session_marker);
+    if (session_start) {
+      session_start += strlen(session_marker);
+      strncpy(req->session_id, session_start, SESSION_ID_LENGTH);
+      req->session_id[SESSION_ID_LENGTH] = '\0';
+
+      // Remove any trailing semicolon or space
+      char *end = strchr(req->session_id, ';');
+      if (end)
+        *end = '\0';
+      end = strchr(req->session_id, ' ');
+      if (end)
+        *end = '\0';
+
+      DEBUG("Extracted session ID: %s", req->session_id);
+    }
   }
 
   DEBUG("Final URL after query parse: '%s'", req->url);

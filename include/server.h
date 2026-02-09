@@ -2,6 +2,7 @@
 #define SERVER_H
 
 #include "./routes.h"
+#include "session.h"
 #include <pthread.h>
 #include <stddef.h>
 #include <unistd.h>
@@ -19,6 +20,7 @@ typedef struct {
   connection_t *conn;
   struct route *routes;
   int n_routes;
+  session_store_t *session_store;  // Add this
 } job_t;
 
 typedef struct {
@@ -36,7 +38,7 @@ typedef struct {
 
 int server_init(int port);
 int server_accept(int server_fd);
-void handle_connection(connection_t *conn, struct route routes[], int n);
+void handle_connection(connection_t *conn, struct route routes[], int n,  session_store_t *session_store);
 int set_nonblocking(int fd);
 void pool_submit(thread_pool_t *pool, job_t job);
 int pool_init(thread_pool_t *pool, int threads);

@@ -4,6 +4,7 @@
 #include "../include/routes.h"
 #include <arpa/inet.h>
 #include <asm-generic/socket.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -11,7 +12,6 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <errno.h>
 
 int server_init(int port) {
   int s = socket(AF_INET, SOCK_STREAM, 0);
@@ -59,7 +59,7 @@ static void *worker_loop(void *arg) {
 
     pthread_mutex_unlock(&pool->lock);
 
-    handle_connection(job.conn, job.routes, job.n_routes);
+    handle_connection(job.conn, job.routes, job.n_routes, job.session_store);
   }
   return NULL;
 }
@@ -74,7 +74,7 @@ void pool_submit(thread_pool_t *pool, job_t job) {
   pthread_mutex_unlock(&pool->lock);
 }
 
-void handle_connection(connection_t *conn, struct route routes[], int n) {
+void handle_connection(connection_t *conn, struct route routes[], int n,  session_store_t *session_store) {
   DEBUG("=== handle_connection START: fd=%d ===", conn->fd);
 
   http_request req;
@@ -104,10 +104,10 @@ void handle_connection(connection_t *conn, struct route routes[], int n) {
 
   if (r < 0) {
     if (errno == ECONNRESET || errno == EPIPE) {
-        // Client closed connection abruptly - this is normal
-        DEBUG("Client closed connection");
+      // Client closed connection abruptly - this is normal
+      DEBUG("Client closed connection");
     } else {
-        ERROR("Error parsing HTTP request: errno=%d", errno);
+      ERROR("Error parsing HTTP request: errno=%d", errno);
     }
     http_response res;
     http_res_init(&res, conn->fd);
@@ -124,6 +124,22 @@ void handle_connection(connection_t *conn, struct route routes[], int n) {
   DEBUG("About to call dispatch_route: req.url='%s', req.method='%s'", req.url,
         req.method);
   DEBUG("req address: %p", (void *)&req);
+
+  // Retrieve or create session
+  if (req.session_id[0] != '\0') {
+    req.session = session_get(session_store, req.session_id);
+    if (!req.session) {
+      DEBUG("Session ID provided but not found, creating new one");
+      char *new_id = session_create(session_store, time(NULL));
+      strcpy(req.session_id, new_id);
+      req.session = session_get(session_store, new_id);
+    }
+  } else {
+    // No session ID provided, create new one
+    char *new_id = session_create(session_store, time(NULL));
+    strcpy(req.session_id, new_id);
+    req.session = session_get(session_store, new_id);
+  }
 
   // Process the request
   dispatch_route(conn->fd, &req, routes, n);

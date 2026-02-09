@@ -2,6 +2,8 @@
 #define CFRAMEWORK
 
 #include "routes.h"
+#include "session.h"  // Add this
+
 typedef struct server_st {
   int listen_fd;
   int port;
@@ -17,6 +19,7 @@ typedef struct server_st {
   int running;
 
   const char *server_name;
+  session_store_t *session_store;
 } server_t;
 
 // int server_init(server_t *srv, int port);

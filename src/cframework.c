@@ -71,7 +71,8 @@ int start_server(server_t *srv) {
         // Existing client ready
         job_t job = {.conn = conns[i],
                      .routes = srv->routes,
-                     .n_routes = srv->route_count};
+                     .n_routes = srv->route_count,
+		     .session_store = srv->session_store };
         pool_submit(&pool, job);
       }
     }
